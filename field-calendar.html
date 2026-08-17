@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Field Calendar</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Space+Grotesk:wght@400;500;600&display=swap');
+
+  :root{
+    --void:#FFFFFF;
+    --panel:#F7F7F5;
+    --bezel:#EBEBE8;
+    --bezel-line:#D6D6D2;
+    --ink:#0D0D0E;
+    --ink-dim:#75746F;
+    --ink-faint:#B8B7B1;
+    --accent:#0D0D0E;
+    --accent-ink:#FFFFFF;
+  }
+
+  *{box-sizing:border-box;}
+
+  html,body{
+    margin:0;
+    padding:0;
+    background:var(--void);
+    font-family:'Space Grotesk',-apple-system,sans-serif;
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+
+  body{
+    display:flex;
+    justify-content:center;
+    padding:28px 16px;
+  }
+
+  .wrap{
+    width:100%;
+    max-width:380px;
+  }
+
+  .eyebrow{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:11px;
+    letter-spacing:0.18em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+    margin-bottom:16px;
+  }
+  .eyebrow .dot{
+    width:6px;height:6px;border-radius:50%;
+    background:var(--accent);
+  }
+
+  .header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:4px;
+  }
+  .month-title{
+    font-family:'Space Mono',monospace;
+    font-weight:700;
+    font-size:20px;
+    letter-spacing:0.01em;
+  }
+  .nav{
+    display:flex;
+    gap:6px;
+  }
+  .nav-btn{
+    width:32px;
+    height:32px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:var(--panel);
+    border:1px solid var(--bezel);
+    border-radius:8px;
+    color:var(--ink);
+    cursor:pointer;
+    font-size:14px;
+    padding:0;
+    line-height:1;
+  }
+  .nav-btn:hover{border-color:var(--bezel-line);}
+  .nav-btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+
+  .complication{
+    font-size:11px;
+    color:var(--ink-dim);
+    margin-bottom:20px;
+    min-height:14px;
+  }
+
+  .weekdays{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    margin-bottom:6px;
+  }
+  .weekdays span{
+    text-align:center;
+    font-size:10px;
+    font-weight:600;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    grid-auto-rows:1fr;
+    gap:2px;
+  }
+  .cell{
+    position:relative;
+    aspect-ratio:1/1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .cell .num{
+    font-family:'Space Mono',monospace;
+    font-size:13px;
+    font-weight:400;
+    width:30px;
+    height:30px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:50%;
+    color:var(--ink);
+  }
+  .cell.outside .num{color:var(--ink-faint);}
+  .cell.today .num{
+    background:var(--accent);
+    color:var(--accent-ink);
+    font-weight:700;
+  }
+  .cell.selected:not(.today) .num{
+    border:1px solid var(--bezel-line);
+  }
+
+  .footer{
+    display:flex;
+    justify-content:center;
+    margin-top:18px;
+  }
+  .today-btn{
+    font-family:'Space Grotesk',sans-serif;
+    font-weight:600;
+    font-size:11px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    padding:9px 20px;
+    background:transparent;
+    border:1px solid var(--bezel-line);
+    border-radius:999px;
+    color:var(--ink-dim);
+    cursor:pointer;
+  }
+  .today-btn:hover{color:var(--ink); border-color:var(--ink-dim);}
+  .today-btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+  .today-btn:disabled{opacity:0.35; cursor:default;}
+
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none !important;}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="header">
+    <div class="month-title" id="monthTitle">August 2026</div>
+    <div class="nav">
+      <button class="nav-btn" id="prevBtn" aria-label="Previous month">&#8249;</button>
+      <button class="nav-btn" id="nextBtn" aria-label="Next month">&#8250;</button>
+    </div>
+  </div>
+  <div class="complication" id="complication"></div>
+
+  <div class="weekdays">
+    <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+  </div>
+  <div class="grid" id="grid"></div>
+
+  <div class="footer">
+    <button class="today-btn" id="todayBtn">Jump to today</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var monthTitle = document.getElementById('monthTitle');
+  var complication = document.getElementById('complication');
+  var grid = document.getElementById('grid');
+  var prevBtn = document.getElementById('prevBtn');
+  var nextBtn = document.getElementById('nextBtn');
+  var todayBtn = document.getElementById('todayBtn');
+
+  var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var weekdayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+  var today = new Date();
+  today.setHours(0,0,0,0);
+  var viewYear = today.getFullYear();
+  var viewMonth = today.getMonth();
+
+  function isSameDay(a, b){
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  }
+
+  function dayOfYear(d){
+    var start = new Date(d.getFullYear(), 0, 1);
+    return Math.floor((d - start) / 86400000) + 1;
+  }
+
+  function isLeap(y){ return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0; }
+
+  function render(){
+    monthTitle.textContent = monthNames[viewMonth] + ' ' + viewYear;
+
+    var isCurrentView = (viewYear === today.getFullYear() && viewMonth === today.getMonth());
+    todayBtn.disabled = isCurrentView;
+
+    complication.textContent = weekdayNames[today.getDay()] + ', ' + monthNames[today.getMonth()] + ' ' + today.getDate();
+
+    grid.innerHTML = '';
+
+    var firstOfMonth = new Date(viewYear, viewMonth, 1);
+    var startWeekday = firstOfMonth.getDay();
+    var daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    var daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
+
+    var totalCells = Math.ceil((startWeekday + daysInMonth) / 7) * 7;
+
+    for (var i = 0; i < totalCells; i++){
+      var cellDate, outside = false;
+      var dayNum = i - startWeekday + 1;
+
+      if (dayNum < 1){
+        cellDate = new Date(viewYear, viewMonth - 1, daysInPrevMonth + dayNum);
+        outside = true;
+      } else if (dayNum > daysInMonth){
+        cellDate = new Date(viewYear, viewMonth + 1, dayNum - daysInMonth);
+        outside = true;
+      } else {
+        cellDate = new Date(viewYear, viewMonth, dayNum);
+      }
+
+      var cell = document.createElement('div');
+      cell.className = 'cell' + (outside ? ' outside' : '');
+      if (isSameDay(cellDate, today)) cell.className += ' today';
+
+      var num = document.createElement('div');
+      num.className = 'num';
+      num.textContent = cellDate.getDate();
+      cell.appendChild(num);
+      grid.appendChild(cell);
+    }
+  }
+
+  prevBtn.addEventListener('click', function(){
+    viewMonth -= 1;
+    if (viewMonth < 0){ viewMonth = 11; viewYear -= 1; }
+    render();
+  });
+  nextBtn.addEventListener('click', function(){
+    viewMonth += 1;
+    if (viewMonth > 11){ viewMonth = 0; viewYear += 1; }
+    render();
+  });
+  todayBtn.addEventListener('click', function(){
+    viewYear = today.getFullYear();
+    viewMonth = today.getMonth();
+    render();
+  });
+
+  render();
+})();
+</script>
+
+</body>
+</html>
